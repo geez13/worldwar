@@ -12,6 +12,8 @@ const AllianceDashboard = ({ isOpen, onClose }) => {
     const [createForm, setCreateForm] = useState({ name: '', tag: '', color: '#ff0000' });
     const [joinTag, setJoinTag] = useState('');
 
+    const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+
     useEffect(() => {
         if (isOpen && publicKey) {
             fetchUserStatus();
@@ -21,7 +23,7 @@ const AllianceDashboard = ({ isOpen, onClose }) => {
     const fetchUserStatus = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`http://localhost:3000/api/user/${publicKey.toString()}`);
+            const res = await fetch(`${API_URL}/api/user/${publicKey.toString()}`);
             const data = await res.json();
 
             if (data.user && data.user.allianceId) {
@@ -47,7 +49,7 @@ const AllianceDashboard = ({ isOpen, onClose }) => {
 
     const fetchAllianceDetails = async (id) => {
         try {
-            const res = await fetch(`http://localhost:3000/api/alliance/${id}`);
+            const res = await fetch(`${API_URL}/api/alliance/${id}`);
             const data = await res.json();
             setAlliance(data);
             setView('DETAILS');
@@ -64,7 +66,7 @@ const AllianceDashboard = ({ isOpen, onClose }) => {
             const encodedMessage = new TextEncoder().encode(message);
             const signature = await signMessage(encodedMessage);
 
-            const res = await fetch('http://localhost:3000/api/alliance/create', {
+            const res = await fetch(`${API_URL}/api/alliance/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -100,7 +102,7 @@ const AllianceDashboard = ({ isOpen, onClose }) => {
             const encodedMessage = new TextEncoder().encode(message);
             const signature = await signMessage(encodedMessage);
 
-            const res = await fetch('http://localhost:3000/api/alliance/join', {
+            const res = await fetch(`${API_URL}/api/alliance/join`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -136,7 +138,7 @@ const AllianceDashboard = ({ isOpen, onClose }) => {
             const encodedMessage = new TextEncoder().encode(message);
             const signature = await signMessage(encodedMessage);
 
-            const res = await fetch('http://localhost:3000/api/alliance/kick', {
+            const res = await fetch(`${API_URL}/api/alliance/kick`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

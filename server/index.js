@@ -14,8 +14,9 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
-// Assuming local instance for MVP. User can swap string later.
-const MONGO_URI = 'mongodb://127.0.0.1:27017/worldwar';
+// MongoDB Connection
+// Use Environment Variable for production, fallback to local for dev
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/worldwar';
 mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.error('MongoDB Connection Error:', err));

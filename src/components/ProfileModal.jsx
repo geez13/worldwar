@@ -9,6 +9,8 @@ const ProfileModal = ({ isOpen, onClose }) => {
     const [tag, setTag] = useState(''); // New State for [TAG]
     const [loading, setLoading] = useState(false);
 
+    const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+
     useEffect(() => {
         if (isOpen && publicKey) {
             fetchUserProfile();
@@ -17,7 +19,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
 
     const fetchUserProfile = async () => {
         try {
-            const res = await fetch(`http://localhost:3000/api/user/${publicKey.toString()}`);
+            const res = await fetch(`${API_URL}/api/user/${publicKey.toString()}`);
             const data = await res.json();
             if (data.user) {
                 setUsername(data.user.username || '');
@@ -49,7 +51,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
             const signature = await signMessage(message);
             const signatureStr = bs58.encode(signature);
 
-            const response = await fetch('http://localhost:3000/api/profile', {
+            const response = await fetch(`${API_URL}/api/profile`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
