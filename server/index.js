@@ -19,7 +19,10 @@ app.use(express.json());
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/worldwar';
 mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.error('MongoDB Connection Error:', err));
+    .catch(err => {
+        console.error('MongoDB Connection Error:', err);
+        process.exit(1); // Fail hard so Render restarts/fails
+    });
 
 // Auth Endpoint
 app.post('/api/profile', async (req, res) => {
