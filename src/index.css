@@ -1,0 +1,22 @@
+body,
+html,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Ensure Wallet Modal is above Leaflet (z-index 400-1000) */
+.wallet-adapter-modal {
+  z-index: 20000 !important;
+}
+
+.wallet-adapter-modal-overlay {
+  z-index: 20001 !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  z-index: 20002 !important;
+}
