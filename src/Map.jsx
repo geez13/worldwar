@@ -9,10 +9,12 @@ import AllianceDashboard from './components/AllianceDashboard';
 import AllianceChat from './components/AllianceChat';
 import Leaderboard from './components/Leaderboard';
 import InfoModal from './components/InfoModal';
+import { API_URL as SOCKET_URL } from './config';
 
 // 0.05 degrees is roughly 5.5km (Strategy Game Scale)
 const GRID_STEP = 0.05;
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+// SOCKET_URL is imported from config at top level
+
 
 // Zoom Indicator Component
 function ZoomIndicator() {
@@ -190,6 +192,7 @@ export default function WorldMap() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isAllianceOpen, setIsAllianceOpen] = useState(false);
     const [isInfoOpen, setIsInfoOpen] = useState(true); // Open by default
+    const [allianceUpdateTrigger, setAllianceUpdateTrigger] = useState(0);
 
     // Manage socket in top-level state
     const [socket, setSocket] = useState(null);
@@ -200,6 +203,10 @@ export default function WorldMap() {
 
         return () => newSocket.disconnect();
     }, []);
+
+    const handleAllianceUpdate = () => {
+        setAllianceUpdateTrigger(prev => prev + 1);
+    };
 
     return (
         <MapContainer
@@ -214,7 +221,13 @@ export default function WorldMap() {
             zoomDelta={1} // 1 level per click
             style={{ height: "100vh", width: "100vw", backgroundColor: '#f8f9fa' }}
         >
-            <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000, display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div
+                style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000, display: 'flex', gap: '10px', alignItems: 'center' }}
+                onMouseDown={e => e.stopPropagation()}
+                onClick={e => e.stopPropagation()}
+                onDoubleClick={e => e.stopPropagation()}
+                onWheel={e => e.stopPropagation()}
+            >
                 <button
                     onClick={() => setIsInfoOpen(true)}
                     style={{
@@ -273,8 +286,12 @@ export default function WorldMap() {
 
             <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
             <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-            <AllianceDashboard isOpen={isAllianceOpen} onClose={() => setIsAllianceOpen(false)} />
-            <AllianceChat socket={socket} />
+            <AllianceDashboard
+                isOpen={isAllianceOpen}
+                onClose={() => setIsAllianceOpen(false)}
+                onAllianceUpdate={handleAllianceUpdate}
+            />
+            <AllianceChat socket={socket} allianceUpdateTrigger={allianceUpdateTrigger} />
             <Leaderboard />
             <ZoomIndicator />
 

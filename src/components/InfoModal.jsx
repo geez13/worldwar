@@ -15,7 +15,12 @@ const InfoModal = ({ isOpen, onClose }) => {
             justifyContent: 'center',
             alignItems: 'center',
             zIndex: 100000 // Highest z-index
-        }}>
+        }}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
+            onDoubleClick={e => e.stopPropagation()}
+            onWheel={e => e.stopPropagation()}
+        >
             <div style={{
                 backgroundColor: '#1a1a1a',
                 color: 'white',

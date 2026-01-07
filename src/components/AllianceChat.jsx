@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { API_URL } from '../config';
 
-const AllianceChat = ({ socket, isOpen }) => {
+const AllianceChat = ({ socket, isOpen, allianceUpdateTrigger }) => {
     const { publicKey } = useWallet();
     const [alliance, setAlliance] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -9,18 +10,18 @@ const AllianceChat = ({ socket, isOpen }) => {
     const [minimized, setMinimized] = useState(false);
     const messagesEndRef = useRef(null);
 
-    // Fetch user alliance on mount/wallet change
+    // Fetch user alliance on mount/wallet change OR trigger
     useEffect(() => {
         if (publicKey) {
             fetchUserStatus();
         } else {
             setAlliance(null);
         }
-    }, [publicKey]);
+    }, [publicKey, allianceUpdateTrigger]);
 
     const fetchUserStatus = async () => {
         try {
-            const res = await fetch(`http://localhost:3000/api/user/${publicKey.toString()}`);
+            const res = await fetch(`${API_URL}/api/user/${publicKey.toString()}`);
             const data = await res.json();
             if (data.user && data.user.allianceId && data.user.allianceId._id) {
                 setAlliance(data.user.allianceId);

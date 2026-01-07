@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import bs58 from 'bs58';
 
-const AllianceDashboard = ({ isOpen, onClose }) => {
+import { API_URL } from '../config';
+
+const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
     const { publicKey, signMessage } = useWallet();
     const [view, setView] = useState('CREATE'); // CREATE, JOIN, DETAILS
     const [alliance, setAlliance] = useState(null);
@@ -11,8 +13,6 @@ const AllianceDashboard = ({ isOpen, onClose }) => {
     // Forms
     const [createForm, setCreateForm] = useState({ name: '', tag: '', color: '#ff0000' });
     const [joinTag, setJoinTag] = useState('');
-
-    const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
     useEffect(() => {
         if (isOpen && publicKey) {
@@ -83,6 +83,7 @@ const AllianceDashboard = ({ isOpen, onClose }) => {
                 setAlliance(data.alliance);
                 setView('DETAILS');
                 alert("Alliance Created!");
+                if (onAllianceUpdate) onAllianceUpdate();
             } else {
                 alert(data.error);
             }
@@ -117,6 +118,7 @@ const AllianceDashboard = ({ isOpen, onClose }) => {
                 setAlliance(data.alliance);
                 setView('DETAILS');
                 alert("Joined Alliance!");
+                if (onAllianceUpdate) onAllianceUpdate();
             } else {
                 alert(data.error);
             }
@@ -171,7 +173,12 @@ const AllianceDashboard = ({ isOpen, onClose }) => {
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 2000,
             display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
+        }}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
+            onDoubleClick={e => e.stopPropagation()}
+            onWheel={e => e.stopPropagation()}
+        >
             <div style={{
                 backgroundColor: 'white', padding: '24px', borderRadius: '12px',
                 width: '400px', maxWidth: '90%', display: 'flex', flexDirection: 'column', gap: '16px'

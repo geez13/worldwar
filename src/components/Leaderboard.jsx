@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 const Leaderboard = () => {
     const [leaders, setLeaders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [minimized, setMinimized] = useState(false);
-
-    const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
     const fetchLeaderboard = async () => {
         try {
@@ -27,7 +26,10 @@ const Leaderboard = () => {
     if (minimized) {
         return (
             <div
-                onClick={() => setMinimized(false)}
+                onClick={(e) => { e.stopPropagation(); setMinimized(false); }}
+                onMouseDown={e => e.stopPropagation()}
+                onDoubleClick={e => e.stopPropagation()}
+                onWheel={e => e.stopPropagation()}
                 style={{
                     position: 'absolute',
                     top: '80px',
@@ -61,7 +63,12 @@ const Leaderboard = () => {
             fontFamily: 'sans-serif',
             boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
             border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
+        }}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
+            onDoubleClick={e => e.stopPropagation()}
+            onWheel={e => e.stopPropagation()}
+        >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '16px', color: '#FFD700' }}>🏆 Domination</h3>
                 <button
