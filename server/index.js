@@ -75,7 +75,7 @@ app.get('/api/user/:walletAddress', async (req, res) => {
 // Create Alliance
 app.post('/api/alliance/create', async (req, res) => {
     try {
-        const { walletAddress, signature, message, name, tag, color } = req.body;
+        const { walletAddress, signature, message, name, tag, color, avatar } = req.body;
 
         if (!walletAddress || !signature || !message || !name || !tag) {
             return res.status(400).json({ error: 'Missing fields' });
@@ -112,8 +112,10 @@ app.post('/api/alliance/create', async (req, res) => {
             name,
             tag,
             leader: walletAddress,
+            leader: walletAddress,
             members: [walletAddress],
-            color: color || '#FFFFFF'
+            color: color || '#FFFFFF',
+            avatar: avatar || 'default'
         });
         await newAlliance.save();
 
@@ -167,6 +169,30 @@ app.post('/api/alliance/join', async (req, res) => {
         res.json({ success: true, alliance });
     } catch (e) {
         console.error('Join alliance error:', e);
+        res.status(500).json({ error: 'Server Error' });
+    }
+});
+
+// Get All Alliances (For Discovery)
+app.get('/api/alliances', async (req, res) => {
+    try {
+        const alliances = await Alliance.aggregate([
+            {
+                $project: {
+                    name: 1,
+                    tag: 1,
+                    color: 1,
+                    avatar: 1,
+                    memberCount: { $size: "$members" },
+                    leader: 1
+                }
+            },
+            { $sort: { memberCount: -1 } }, // Sort by largest first
+            { $limit: 100 }
+        ]);
+        res.json(alliances);
+    } catch (e) {
+        console.error('Fetch alliances error:', e);
         res.status(500).json({ error: 'Server Error' });
     }
 });
@@ -398,6 +424,21 @@ io.on('connection', (socket) => {
         } catch (e) {
             console.error('Error joining room:', e);
         }
+    });
+
+    // --- Global Chat Events ---
+    socket.on('join_global_room', () => {
+        socket.join('global_chat');
+    });
+
+    socket.on('global_chat_message', (data) => {
+        const { message, sender, tag } = data;
+        io.to('global_chat').emit('global_message', {
+            message,
+            sender,
+            tag, // Optional, if user has one
+            timestamp: new Date()
+        });
     });
 
     socket.on('alliance_chat_message', (data) => {

@@ -7,6 +7,7 @@ const AllianceSchema = new mongoose.Schema({
     members: [{ type: String }], // Array of Wallet Addresses
     description: { type: String, default: "" },
     color: { type: String, default: "#FFFFFF" }, // Alliance Theme Color
+    avatar: { type: String, default: "default" }, // Identicon Seed
     stats: {
         totalPixels: { type: Number, default: 0 },
         rank: { type: Number, default: 0 }

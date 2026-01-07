@@ -11,14 +11,39 @@ const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
     const [loading, setLoading] = useState(false);
 
     // Forms
-    const [createForm, setCreateForm] = useState({ name: '', tag: '', color: '#ff0000' });
+    const [createForm, setCreateForm] = useState({ name: '', tag: '', color: '#ff0000', avatar: Math.random().toString(36).substring(7) }); // Default random avatar
     const [joinTag, setJoinTag] = useState('');
+    const [alliancesList, setAlliancesList] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const getContrastColor = (hexColor) => {
+        if (!hexColor) return 'ffffff';
+        const hex = hexColor.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return (yiq >= 128) ? '000000' : 'ffffff';
+    };
+
+    const getAvatarUrl = (seed, color) => {
+        const userColorHex = color ? color.replace('#', '') : 'ff0000';
+        const backgroundColorHex = getContrastColor(color);
+        // Attempt to set foreground color using rowColor definition if supported, otherwise just set background
+        return `https://api.dicebear.com/7.x/identicon/svg?seed=${seed}&backgroundColor=${backgroundColorHex}&rowColor=${userColorHex}`;
+    };
 
     useEffect(() => {
         if (isOpen && publicKey) {
             fetchUserStatus();
         }
     }, [isOpen, publicKey]);
+
+    useEffect(() => {
+        if (view === 'JOIN') {
+            fetchAlliances();
+        }
+    }, [view]);
 
     const fetchUserStatus = async () => {
         try {
@@ -58,6 +83,21 @@ const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
         }
     };
 
+    const fetchAlliances = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch(`${API_URL}/api/alliances`);
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setAlliancesList(data);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleCreate = async () => {
         if (!publicKey || !signMessage) return;
         setLoading(true);
@@ -74,8 +114,11 @@ const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
                     signature: bs58.encode(signature),
                     message,
                     name: createForm.name,
+                    message,
+                    name: createForm.name,
                     tag: createForm.tag,
-                    color: createForm.color
+                    color: createForm.color,
+                    avatar: createForm.avatar
                 })
             });
             const data = await res.json();
@@ -95,11 +138,12 @@ const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
         }
     };
 
-    const handleJoin = async () => {
-        if (!publicKey || !signMessage) return;
+    const handleJoin = async (specificTag = null) => {
+        const tagToJoin = specificTag || joinTag;
+        if (!publicKey || !signMessage || !tagToJoin) return;
         setLoading(true);
         try {
-            const message = `Join Alliance: ${joinTag}`;
+            const message = `Join Alliance: ${tagToJoin}`;
             const encodedMessage = new TextEncoder().encode(message);
             const signature = await signMessage(encodedMessage);
 
@@ -110,7 +154,7 @@ const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
                     walletAddress: publicKey.toString(),
                     signature: bs58.encode(signature),
                     message,
-                    allianceTag: joinTag
+                    allianceTag: tagToJoin
                 })
             });
             const data = await res.json();
@@ -166,6 +210,8 @@ const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
         }
     };
 
+    const modalRef = React.useRef(null);
+
     if (!isOpen) return null;
 
     return (
@@ -173,35 +219,81 @@ const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 2000,
             display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}
-            onMouseDown={e => e.stopPropagation()}
-            onClick={e => e.stopPropagation()}
-            onDoubleClick={e => e.stopPropagation()}
-            onWheel={e => e.stopPropagation()}
-        >
-            <div style={{
-                backgroundColor: 'white', padding: '24px', borderRadius: '12px',
-                width: '400px', maxWidth: '90%', display: 'flex', flexDirection: 'column', gap: '16px'
-            }}>
+        }}>
+            <div
+                ref={modalRef}
+                style={{
+                    backgroundColor: 'rgba(0, 0, 0, 0.95)', padding: '24px', borderRadius: '12px',
+                    width: '400px', maxWidth: '90%', display: 'flex', flexDirection: 'column', gap: '16px',
+                    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    color: 'white', border: '2px solid #444', boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+                }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ margin: 0 }}>🛡️ Alliance Command</h2>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✖️</button>
+                    <h2 style={{ margin: 0, fontWeight: '800', fontSize: '24px', color: 'white' }}>🛡️ Alliance Hub</h2>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#888' }}>✕</button>
                 </div>
 
                 {!alliance ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                            <button onClick={() => setView('CREATE')} style={{ flex: 1, padding: '10px', background: view === 'CREATE' ? '#333' : '#ddd', color: view === 'CREATE' ? 'white' : 'black', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Create</button>
-                            <button onClick={() => setView('JOIN')} style={{ flex: 1, padding: '10px', background: view === 'JOIN' ? '#333' : '#ddd', color: view === 'JOIN' ? 'white' : 'black', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Join</button>
+                            <button onClick={() => setView('CREATE')} style={{ flex: 1, padding: '10px', background: view === 'CREATE' ? '#555' : '#333', color: 'white', border: view === 'CREATE' ? '2px solid #888' : '2px solid transparent', borderRadius: '5px', cursor: 'pointer', fontWeight: view === 'CREATE' ? 'bold' : 'normal' }}>Create</button>
+                            <button onClick={() => setView('JOIN')} style={{ flex: 1, padding: '10px', background: view === 'JOIN' ? '#555' : '#333', color: 'white', border: view === 'JOIN' ? '2px solid #888' : '2px solid transparent', borderRadius: '5px', cursor: 'pointer', fontWeight: view === 'JOIN' ? 'bold' : 'normal' }}>Join</button>
                         </div>
 
                         {view === 'CREATE' && (
                             <>
-                                <input type="text" placeholder="Name (e.g. The Void)" value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} style={{ padding: '8px' }} />
-                                <input type="text" placeholder="Tag (e.g. VOID)" value={createForm.tag} onChange={e => setCreateForm({ ...createForm, tag: e.target.value })} style={{ padding: '8px' }} />
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <label>Color:</label>
-                                    <input type="color" value={createForm.color} onChange={e => setCreateForm({ ...createForm, color: e.target.value })} />
+                                <input type="text" placeholder="Name (e.g. The Void)" value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#222', color: 'white' }} />
+                                <input type="text" placeholder="Tag (e.g. VOID)" value={createForm.tag} onChange={e => setCreateForm({ ...createForm, tag: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#222', color: 'white' }} />
+                                <div style={{ display: 'flex', gap: '16px', marginTop: '10px', marginBottom: '10px' }}>
+                                    {/* Color Picker Section */}
+                                    <div style={{
+                                        flex: 1, display: 'flex', flexDirection: 'column', gap: '8px',
+                                        padding: '12px', border: '1px solid #eee', borderRadius: '12px', alignItems: 'center'
+                                    }}>
+                                        <div style={{
+                                            width: '80px', height: '80px', borderRadius: '12px',
+                                            overflow: 'hidden', border: '2px solid #e0e0e0', cursor: 'pointer',
+                                            position: 'relative'
+                                        }}>
+                                            <input
+                                                type="color"
+                                                value={createForm.color}
+                                                onChange={e => setCreateForm({ ...createForm, color: e.target.value })}
+                                                style={{
+                                                    width: '150%', height: '150%', padding: 0, border: 'none',
+                                                    position: 'absolute', top: '-25%', left: '-25%', cursor: 'pointer'
+                                                }}
+                                            />
+                                        </div>
+                                        <span style={{ fontSize: '13px', fontWeight: '500', color: '#aaa' }}>Alliance Color</span>
+                                    </div>
+
+                                    {/* Logo Selection Section */}
+                                    <div style={{
+                                        flex: 1, display: 'flex', flexDirection: 'column', gap: '8px',
+                                        padding: '12px', border: '1px solid #eee', borderRadius: '12px', alignItems: 'center'
+                                    }}>
+                                        <div style={{
+                                            width: '80px', height: '80px', borderRadius: '12px',
+                                            backgroundColor: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            border: '2px solid #e0e0e0'
+                                        }}>
+                                            <img
+                                                src={getAvatarUrl(createForm.avatar, createForm.color)}
+                                                alt="Avatar Preview"
+                                                style={{ width: '64px', height: '64px', borderRadius: '8px' }}
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => setCreateForm({ ...createForm, avatar: Math.random().toString(36).substring(7) })}
+                                            style={{
+                                                padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
+                                                background: '#444', border: 'none', borderRadius: '20px', fontWeight: '600', color: 'white'
+                                            }}
+                                        >
+                                            🎲 Randomize
+                                        </button>
+                                    </div>
                                 </div>
                                 <button onClick={handleCreate} disabled={loading} style={{ padding: '10px', background: '#FF4500', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
                                     {loading ? 'Signing...' : 'Establish Alliance'}
@@ -210,34 +302,138 @@ const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
                         )}
 
                         {view === 'JOIN' && (
-                            <>
-                                <input type="text" placeholder="Enter Alliance Tag" value={joinTag} onChange={e => setJoinTag(e.target.value)} style={{ padding: '8px' }} />
-                                <button onClick={handleJoin} disabled={loading} style={{ padding: '10px', background: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-                                    {loading ? 'Signing...' : 'Join Alliance'}
-                                </button>
-                            </>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%' }}>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by Tag or Name..."
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#222', color: 'white' }}
+                                    />
+                                </div>
+
+                                <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    {alliancesList
+                                        .filter(a =>
+                                            a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                            a.tag.toLowerCase().includes(searchTerm.toLowerCase())
+                                        )
+                                        .map(a => (
+                                            <div key={a._id} style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                padding: '12px', border: '1px solid #444', borderRadius: '10px',
+                                                backgroundColor: '#1a1a1a'
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <div style={{
+                                                        width: '40px', height: '40px', borderRadius: '8px',
+                                                        backgroundColor: '#333', overflow: 'hidden', flexShrink: 0
+                                                    }}>
+                                                        <img
+                                                            src={getAvatarUrl(a.avatar || 'default', a.color)}
+                                                            alt="Logo"
+                                                            style={{ width: '100%', height: '100%' }}
+                                                        />
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                        <span style={{ fontWeight: 'bold', color: 'white' }}>{a.name} <span style={{ color: '#888', fontWeight: 'normal' }}>[{a.tag}]</span></span>
+                                                        <span style={{ fontSize: '12px', color: '#888' }}>{a.memberCount} Members • Leader: {a.leader.slice(0, 4)}..{a.leader.slice(-4)}</span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleJoin(a.tag)}
+                                                    disabled={loading}
+                                                    style={{
+                                                        padding: '8px 16px', backgroundColor: '#333', color: 'white',
+                                                        border: 'none', borderRadius: '20px', cursor: 'pointer', fontWeight: '600', fontSize: '12px'
+                                                    }}
+                                                >
+                                                    Join
+                                                </button>
+                                            </div>
+                                        ))}
+                                    {alliancesList.length === 0 && !loading && (
+                                        <div style={{ textAlign: 'center', color: '#888', padding: '20px' }}>No alliances found.</div>
+                                    )}
+                                </div>
+                            </div>
                         )}
                     </div>
                 ) : (
                     <div>
-                        <h3 style={{ color: alliance.color }}>[{alliance.tag}] {alliance.name}</h3>
-                        <p><strong>Leader:</strong> {alliance.leader.slice(0, 6)}...</p>
-                        <p><strong>Members:</strong> {alliance.members.length}</p>
-                        <ul style={{ maxHeight: '150px', overflowY: 'auto', paddingLeft: '0', listStyle: 'none' }}>
-                            {alliance.members.map(m => (
-                                <li key={m} style={{ padding: '5px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>{m.slice(0, 8)}... {m === alliance.leader && '👑'}</span>
-                                    {publicKey && alliance.leader === publicKey.toString() && m !== alliance.leader && (
-                                        <button
-                                            onClick={() => handleKick(m)}
-                                            style={{ backgroundColor: '#ff4444', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px', padding: '2px 5px' }}
-                                        >
-                                            Kick
-                                        </button>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                            <img
+                                src={getAvatarUrl(alliance.avatar || 'default', alliance.color)}
+                                alt="Alliance Logo"
+                                style={{ width: '64px', height: '64px', borderRadius: '12px', backgroundColor: '#222', border: '2px solid #444' }}
+                            />
+                            <div>
+                                <h3 style={{ margin: 0, color: alliance.color, fontSize: '22px' }}>{alliance.name}</h3>
+                                <span style={{ color: '#aaa', fontWeight: '600' }}>[{alliance.tag}]</span>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: 'white' }}>Team Members ({alliance.members.length})</h4>
+                            <span style={{ fontSize: '14px', color: '#888', cursor: 'pointer' }}>See all</span>
+                        </div>
+
+                        <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {alliance.members.map((m, idx) => {
+                                const isLeader = m === alliance.leader;
+                                const isMe = m === publicKey?.toString();
+                                const displayName = m.slice(0, 8) + '...';
+
+                                return (
+                                    <div key={m} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            {/* Avatar Circle */}
+                                            <div style={{
+                                                width: '48px', height: '48px', borderRadius: '50%',
+                                                backgroundColor: isLeader ? '#FFD700' : '#E0E0E0',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '20px', overflow: 'hidden'
+                                            }}>
+                                                <img
+                                                    src={`https://api.dicebear.com/7.x/bottts/svg?seed=${m}`}
+                                                    alt="avatar"
+                                                    style={{ width: '100%', height: '100%' }}
+                                                />
+                                            </div>
+
+                                            {/* Name & Subtext */}
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontWeight: 'bold', fontSize: '16px', color: 'white' }}>
+                                                    {displayName} {isLeader && '👑'}
+                                                </span>
+                                                <span style={{ fontSize: '12px', color: '#888' }}>
+                                                    {isLeader ? 'Leader' : 'Member'} • {isMe ? 'You' : 'Active'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Side: Stats or Action */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {/* Rank Icon Placeholder */}
+                                            {idx < 3 && <span style={{ fontSize: '18px' }}>🏅</span>}
+
+                                            {publicKey && alliance.leader === publicKey.toString() && m !== alliance.leader && (
+                                                <button
+                                                    onClick={() => handleKick(m)}
+                                                    style={{
+                                                        backgroundColor: '#ff4444', color: 'white', border: 'none',
+                                                        borderRadius: '20px', cursor: 'pointer', fontSize: '12px',
+                                                        padding: '4px 12px', fontWeight: '600'
+                                                    }}
+                                                >
+                                                    Kick
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
             </div>

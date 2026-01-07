@@ -27,7 +27,7 @@ function ZoomIndicator() {
 
     return (
         <div style={{
-            position: 'absolute', bottom: 20, right: 20, zIndex: 10000,
+            position: 'absolute', bottom: 20, left: 350, zIndex: 10000,
             padding: '5px 10px', backgroundColor: 'rgba(0,0,0,0.6)',
             color: 'white', borderRadius: '4px', fontSize: '14px',
             pointerEvents: 'none', userSelect: 'none',
@@ -208,25 +208,40 @@ export default function WorldMap() {
         setAllianceUpdateTrigger(prev => prev + 1);
     };
 
+
+
     return (
-        <MapContainer
-            center={[20, 0]}
-            zoom={4} // Start slightly zoomed out
-            minZoom={3} // Allow seeing whole world
-            maxZoom={23}
-            scrollWheelZoom={true}
-            zoomControl={false}
-            attributionControl={false}
-            zoomSnap={1} // Force integer steps
-            zoomDelta={1} // 1 level per click
-            style={{ height: "100vh", width: "100vw", backgroundColor: '#f8f9fa' }}
-        >
+        <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+            <MapContainer
+                center={[20, 0]}
+                zoom={4} // Start slightly zoomed out
+                minZoom={3} // Allow seeing whole world
+                maxZoom={23}
+                scrollWheelZoom={true}
+                zoomControl={false}
+                attributionControl={false}
+                zoomSnap={1} // Force integer steps
+                zoomDelta={1} // 1 level per click
+                style={{ height: "100%", width: "100%", backgroundColor: '#f8f9fa' }}
+            >
+                <ZoomIndicator />
+
+                <TileLayer
+                    url={BASE_LAYER_URL}
+                    maxNativeZoom={16}
+                    maxZoom={23}
+                />
+                <TileLayer
+                    url={LABEL_LAYER_URL}
+                    maxNativeZoom={16}
+                    maxZoom={23}
+                />
+                <GridOverlay selectedColor={selectedColor} socket={socket} />
+            </MapContainer>
+
+            {/* UI LAYER (Outside MapContext) */}
             <div
                 style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000, display: 'flex', gap: '10px', alignItems: 'center' }}
-                onMouseDown={e => e.stopPropagation()}
-                onClick={e => e.stopPropagation()}
-                onDoubleClick={e => e.stopPropagation()}
-                onWheel={e => e.stopPropagation()}
             >
                 <button
                     onClick={() => setIsInfoOpen(true)}
@@ -253,14 +268,16 @@ export default function WorldMap() {
                     onClick={() => setIsAllianceOpen(true)}
                     style={{
                         padding: '10px 20px',
-                        backgroundColor: '#FFD700',
-                        color: 'black',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
+                        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                        color: 'white',
+                        border: '2px solid #555',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        fontWeight: '600',
                         cursor: 'pointer',
-                        height: '48px'
+                        height: '44px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                     }}
                 >
                     🛡️ Alliance
@@ -269,19 +286,33 @@ export default function WorldMap() {
                     onClick={() => setIsProfileOpen(true)}
                     style={{
                         padding: '10px 20px',
-                        backgroundColor: '#512da8',
+                        backgroundColor: 'rgba(0, 0, 0, 0.85)',
                         color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
+                        border: '2px solid #555',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        fontWeight: '600',
                         cursor: 'pointer',
-                        height: '48px' // Match WalletButton height approx
+                        height: '44px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                     }}
                 >
                     👤 Profile
                 </button>
-                <WalletMultiButton />
+                <WalletMultiButton style={{
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    color: 'white',
+                    border: '2px solid #555',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    height: '44px',
+                    lineHeight: '40px', // Helps center text since it's sometimes weird in this external component
+                    padding: '0 20px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                }} />
             </div>
 
             <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
@@ -293,19 +324,6 @@ export default function WorldMap() {
             />
             <AllianceChat socket={socket} allianceUpdateTrigger={allianceUpdateTrigger} />
             <Leaderboard />
-            <ZoomIndicator />
-
-            <TileLayer
-                url={BASE_LAYER_URL}
-                maxNativeZoom={16}
-                maxZoom={23}
-            />
-            <TileLayer
-                url={LABEL_LAYER_URL}
-                maxNativeZoom={16}
-                maxZoom={23}
-            />
-            <GridOverlay selectedColor={selectedColor} socket={socket} />
-        </MapContainer>
+        </div>
     );
 }
