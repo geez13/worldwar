@@ -101,6 +101,12 @@ app.post('/api/alliance/create', async (req, res) => {
             return res.status(400).json({ error: 'Name or Tag taken' });
         }
 
+        // 3.5 Check color uniqueness
+        const existingColor = await Alliance.findOne({ color });
+        if (existingColor) {
+            return res.status(400).json({ error: 'Color already taken. Choose another.' });
+        }
+
         // 4. Create Alliance
         const newAlliance = new Alliance({
             name,
@@ -213,6 +219,41 @@ app.post('/api/alliance/kick', async (req, res) => {
     }
 });
 
+// Leaderboard
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        const leaderboard = await Pixel.aggregate([
+            { $match: { allianceId: { $ne: null } } },
+            { $group: { _id: '$allianceId', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 10 },
+            {
+                $lookup: {
+                    from: 'alliances',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'alliance'
+                }
+            },
+            { $unwind: '$alliance' },
+            {
+                $project: {
+                    _id: 1,
+                    count: 1,
+                    name: '$alliance.name',
+                    tag: '$alliance.tag',
+                    color: '$alliance.color',
+                    leader: '$alliance.leader'
+                }
+            }
+        ]);
+        res.json(leaderboard);
+    } catch (e) {
+        console.error('Leaderboard error:', e);
+        res.status(500).json({ error: 'Server Error' });
+    }
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
     cors: {
@@ -276,20 +317,32 @@ io.on('connection', (socket) => {
     });
 
     socket.on('paint_pixel', async (data) => {
-        // data: { key, color, walletAddress (optional for now) }
-        const { key, color, walletAddress } = data;
+        // data: { key, color, walletAddress }
+        let { key, color, walletAddress } = data;
+        let allianceId = null;
+
+        // 0. Enforce Alliance Color if user is in one
+        if (walletAddress) {
+            try {
+                const user = await User.findOne({ walletAddress }).populate('allianceId');
+                if (user && user.allianceId) {
+                    color = user.allianceId.color; // OVERRIDE color
+                    allianceId = user.allianceId._id;
+                }
+            } catch (e) { console.error('Error fetching user for paint:', e); }
+        }
 
         // 1. Update Memory
         pixelMap.set(key, color);
 
-        // 2. Broadcast
+        // 2. Broadcast (Send updated color back so everyone sees the Alliance Color)
         io.emit('pixel_update', { key, color });
 
         // 3. Persist Async
         try {
             await Pixel.findOneAndUpdate(
                 { key },
-                { key, color, owner: walletAddress, timestamp: new Date() },
+                { key, color, owner: walletAddress, allianceId, timestamp: new Date() },
                 { upsert: true, new: true }
             );
 

@@ -4,10 +4,11 @@ import 'leaflet/dist/leaflet.css';
 import { io } from 'socket.io-client';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import ColorPicker from './components/ColorPicker';
 import ProfileModal from './components/ProfileModal';
 import AllianceDashboard from './components/AllianceDashboard';
 import AllianceChat from './components/AllianceChat';
+import Leaderboard from './components/Leaderboard';
+import InfoModal from './components/InfoModal';
 
 // 0.05 degrees is roughly 5.5km (Strategy Game Scale)
 const GRID_STEP = 0.05;
@@ -134,18 +135,6 @@ function GridOverlay({ selectedColor, socket }) {
                 ctx.fillStyle = color;
                 ctx.fillRect(Math.floor(p1.x), Math.floor(p1.y), Math.ceil(w), Math.ceil(h));
             });
-
-            // Draw Grid Lines - DISABLED
-            // ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-            // ...
-            /*
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            
-            // ... grid drawing code removed ...
-            
-            ctx.stroke();
-            */
         };
 
         const onMapClick = (e) => {
@@ -179,7 +168,7 @@ function GridOverlay({ selectedColor, socket }) {
             map.off('resize', draw);
             map.off('click', onMapClick);
         };
-    }, [map, pixels, selectedColor, publicKey, socket]); // Re-bind when pixels, color, or WALLET changes
+    }, [map, pixels, selectedColor, publicKey, socket]);
 
     return (
         <canvas
@@ -189,19 +178,18 @@ function GridOverlay({ selectedColor, socket }) {
     );
 }
 
-// Esri World Physical: Clean terrain + borders, no roads.
-// Note: Native zoom only goes to ~8. We scale update for high zoom (pixel war focus).
-// Esri World Gray Canvas: Lightweight, clean, "line only" feel.
+// Esri World Physical
 const BASE_LAYER_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
-// Esri World Gray Reference: Labels and borders overlay
+// Esri World Gray Reference
 const LABEL_LAYER_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}";
 
 
 
 export default function WorldMap() {
-    const [selectedColor, setSelectedColor] = useState('#FF4500'); // Default Orange Red
+    const selectedColor = '#808080'; // Hardcoded neutral color since Picker is gone
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isAllianceOpen, setIsAllianceOpen] = useState(false);
+    const [isInfoOpen, setIsInfoOpen] = useState(true); // Open by default
 
     // Manage socket in top-level state
     const [socket, setSocket] = useState(null);
@@ -226,7 +214,28 @@ export default function WorldMap() {
             zoomDelta={1} // 1 level per click
             style={{ height: "100vh", width: "100vw", backgroundColor: '#f8f9fa' }}
         >
-            <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000, display: 'flex', gap: '10px' }}>
+            <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000, display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button
+                    onClick={() => setIsInfoOpen(true)}
+                    style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        color: '#FFD700',
+                        border: '2px solid #FFD700',
+                        fontSize: '20px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                    }}
+                    title="How to Play"
+                >
+                    ℹ️
+                </button>
                 <button
                     onClick={() => setIsAllianceOpen(true)}
                     style={{
@@ -259,78 +268,15 @@ export default function WorldMap() {
                 >
                     👤 Profile
                 </button>
-                <button
-                    onClick={() => {
-                        // SPRAY "WORLD RAID" LOGIC
-                        if (!socket) return;
-                        const updates = [];
-                        const startLat = 0; // Equator
-                        const startLng = 15; // Congo
-                        const color = '#FFD700'; // Gold
-
-                        // Simple Bitmap Font (5x5) 'X' marks the spot
-                        const letters = {
-                            W: [[0, 0], [0, 4], [1, 0], [1, 4], [2, 0], [2, 2], [2, 4], [3, 0], [3, 4], [4, 0], [4, 4]],
-                            O: [[0, 1], [0, 2], [0, 3], [1, 0], [1, 4], [2, 0], [2, 4], [3, 0], [3, 4], [4, 1], [4, 2], [4, 3]],
-                            R: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 0], [1, 4], [2, 0], [2, 1], [2, 2], [2, 3], [3, 0], [3, 2], [4, 0], [4, 3]],
-                            L: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [4, 1], [4, 2], [4, 3]],
-                            D: [[0, 0], [0, 1], [0, 2], [1, 0], [1, 3], [2, 0], [2, 3], [3, 0], [3, 3], [4, 0], [4, 1], [4, 2]],
-                            A: [[0, 2], [1, 1], [1, 3], [2, 0], [2, 4], [3, 0], [3, 1], [3, 2], [3, 3], [3, 4], [4, 0], [4, 4]],
-                            I: [[0, 0], [0, 1], [0, 2], [1, 1], [2, 1], [3, 1], [4, 0], [4, 1], [4, 2]],
-                        };
-
-                        const text = "WORLD RAID";
-                        let cursorLng = 0; // Relative pointer
-
-                        for (const char of text) {
-                            if (char === ' ') {
-                                cursorLng += 4;
-                                continue;
-                            }
-                            const pattern = letters[char] || []; // default empty if unknown
-
-                            // Scale: 1 (One grid cell = one significant block now)
-                            const scale = 1;
-
-                            pattern.forEach(([r, c]) => {
-                                const latVal = startLat - (r * GRID_STEP);
-                                const lngVal = startLng + (cursorLng + c) * GRID_STEP;
-
-                                const latIdx = Math.floor(latVal / GRID_STEP);
-                                const lngIdx = Math.floor(lngVal / GRID_STEP);
-                                updates.push({ key: `${latIdx},${lngIdx}`, color });
-                            });
-                            cursorLng += 5 + 1; // 5 width + spacing
-                        }
-
-                        console.log(`Sending batch_paint with ${updates.length} pixels...`);
-                        socket.emit('batch_paint', { updates, walletAddress: 'API_TESTER' });
-                        alert(`Sprayed ${updates.length} pixels at [0, 15] (Africa)! Zoom to 10x to see.`);
-                    }}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#ff0000',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        height: '48px',
-                        zIndex: 9999
-                    }}
-                >
-                    🧪 SPRAY
-                </button>
                 <WalletMultiButton />
             </div>
 
+            <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
             <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
             <AllianceDashboard isOpen={isAllianceOpen} onClose={() => setIsAllianceOpen(false)} />
             <AllianceChat socket={socket} />
+            <Leaderboard />
             <ZoomIndicator />
-
-            <ColorPicker selectedColor={selectedColor} onSelectColor={setSelectedColor} />
 
             <TileLayer
                 url={BASE_LAYER_URL}
