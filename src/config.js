@@ -28,5 +28,12 @@ const getApiUrl = () => {
 export const API_URL = getApiUrl();
 console.log("🔌 Socket URL configured to:", API_URL);
 
-// Buy $PXN Link - configurable via environment variable
-export const BUY_PXN_URL = import.meta.env.VITE_BUY_PXN_URL || 'https://pump.fun';
+// Token Contract Address - configurable via environment variable
+// Default is test token, replace with real $PXN CA in production
+export const TOKEN_CA = import.meta.env.VITE_TOKEN_CA || 'nljtfes9waraj5ahhmfkp5fpmravzebvteptxeypump';
+
+// Buy $PXN Link - uses token CA for pump.fun
+export const BUY_PXN_URL = `https://pump.fun/coin/${TOKEN_CA}`;
+
+// Solana RPC URL for token balance checks
+export const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';

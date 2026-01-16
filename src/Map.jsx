@@ -9,6 +9,8 @@ import AllianceDashboard from './components/AllianceDashboard';
 import AllianceChat from './components/AllianceChat';
 import Leaderboard from './components/Leaderboard';
 import InfoModal from './components/InfoModal';
+import TokenStats from './components/TokenStats';
+import { checkTokenBalance } from './services/tokenService';
 import { API_URL as SOCKET_URL } from './config';
 
 // 0.05 degrees is roughly 5.5km (Strategy Game Scale)
@@ -199,6 +201,9 @@ export default function WorldMap() {
     const [isAllianceOpen, setIsAllianceOpen] = useState(false);
     const [isInfoOpen, setIsInfoOpen] = useState(true); // Open by default
     const [allianceUpdateTrigger, setAllianceUpdateTrigger] = useState(0);
+    const [hasToken, setHasToken] = useState(false);
+    const [isCheckingToken, setIsCheckingToken] = useState(false);
+    const { publicKey, connected } = useWallet();
 
     // Manage socket in top-level state
     const [socket, setSocket] = useState(null);
@@ -209,6 +214,26 @@ export default function WorldMap() {
 
         return () => newSocket.disconnect();
     }, []);
+
+    // Check token balance when wallet connects
+    useEffect(() => {
+        const checkBalance = async () => {
+            if (connected && publicKey) {
+                setIsCheckingToken(true);
+                const result = await checkTokenBalance(publicKey.toString());
+                setHasToken(result.hasToken);
+                setIsCheckingToken(false);
+
+                // Close info modal if user has token
+                if (result.hasToken) {
+                    setIsInfoOpen(false);
+                }
+            } else {
+                setHasToken(false);
+            }
+        };
+        checkBalance();
+    }, [connected, publicKey]);
 
     const handleAllianceUpdate = () => {
         setAllianceUpdateTrigger(prev => prev + 1);
@@ -261,84 +286,97 @@ export default function WorldMap() {
                     filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4))'
                 }}
             />
+            {/* Top Right UI Container */}
             <div
-                style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000, display: 'flex', gap: '10px', alignItems: 'center' }}
+                style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}
             >
-                <button
-                    onClick={() => setIsInfoOpen(true)}
-                    style={{
-                        padding: '10px 16px',
-                        height: '44px',
-                        borderRadius: '8px',
+                {/* Top Row - Buttons */}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <button
+                        onClick={() => setIsInfoOpen(true)}
+                        style={{
+                            padding: '10px 16px',
+                            height: '44px',
+                            borderRadius: '8px',
+                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                            color: 'white',
+                            border: '2px solid #555',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                        }}
+                        title="How to Play"
+                    >
+                        ❓ How to Play
+                    </button>
+                    <button
+                        onClick={() => setIsAllianceOpen(true)}
+                        style={{
+                            padding: '10px 20px',
+                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                            color: 'white',
+                            border: '2px solid #555',
+                            borderRadius: '8px',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            height: '44px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                        }}
+                    >
+                        🛡️ Alliance
+                    </button>
+                    <button
+                        onClick={() => setIsProfileOpen(true)}
+                        style={{
+                            padding: '10px 20px',
+                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                            color: 'white',
+                            border: '2px solid #555',
+                            borderRadius: '8px',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            height: '44px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                        }}
+                    >
+                        👤 Profile
+                    </button>
+                    <WalletMultiButton style={{
                         backgroundColor: 'rgba(0, 0, 0, 0.85)',
                         color: 'white',
                         border: '2px solid #555',
-                        fontSize: '15px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        gap: '6px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                    }}
-                    title="How to Play"
-                >
-                    ❓ How to Play
-                </button>
-                <button
-                    onClick={() => setIsAllianceOpen(true)}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                        color: 'white',
-                        border: '2px solid #555',
                         borderRadius: '8px',
                         fontSize: '15px',
                         fontWeight: '600',
-                        cursor: 'pointer',
                         height: '44px',
+                        lineHeight: '40px',
+                        padding: '0 20px',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                         fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                    }}
-                >
-                    🛡️ Alliance
-                </button>
-                <button
-                    onClick={() => setIsProfileOpen(true)}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                        color: 'white',
-                        border: '2px solid #555',
-                        borderRadius: '8px',
-                        fontSize: '15px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        height: '44px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                    }}
-                >
-                    👤 Profile
-                </button>
-                <WalletMultiButton style={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                    color: 'white',
-                    border: '2px solid #555',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                    height: '44px',
-                    lineHeight: '40px', // Helps center text since it's sometimes weird in this external component
-                    padding: '0 20px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                }} />
+                    }} />
+                </div>
+
+                {/* Token Stats - Below wallet */}
+                <TokenStats />
             </div>
 
-            <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
+            <InfoModal
+                isOpen={isInfoOpen}
+                onClose={() => setIsInfoOpen(false)}
+                hasToken={hasToken}
+                isCheckingToken={isCheckingToken}
+                isConnected={connected}
+            />
             <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
             <AllianceDashboard
                 isOpen={isAllianceOpen}
