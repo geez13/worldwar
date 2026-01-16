@@ -40,10 +40,27 @@ const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
     }, [isOpen, publicKey]);
 
     useEffect(() => {
-        if (view === 'JOIN') {
+        if (view === 'JOIN' || view === 'CREATE') {
             fetchAlliances();
         }
     }, [view]);
+
+    // 50 Predefined Colors
+    const COLOR_PALETTE = [
+        '#FF0000', '#FF4500', '#FF6347', '#FF7F50', '#FFA500',
+        '#FFD700', '#FFFF00', '#ADFF2F', '#7FFF00', '#00FF00',
+        '#32CD32', '#00FA9A', '#00FFFF', '#00CED1', '#1E90FF',
+        '#0000FF', '#4169E1', '#8A2BE2', '#9400D3', '#FF00FF',
+        '#FF1493', '#DC143C', '#B22222', '#8B0000', '#800000',
+        '#A52A2A', '#D2691E', '#CD853F', '#DAA520', '#808000',
+        '#6B8E23', '#228B22', '#006400', '#2E8B57', '#20B2AA',
+        '#008B8B', '#4682B4', '#000080', '#191970', '#483D8B',
+        '#663399', '#4B0082', '#800080', '#8B008B', '#C71585',
+        '#DB7093', '#F08080', '#FA8072', '#E9967A', '#F4A460'
+    ];
+
+    const takenColors = alliancesList.map(a => a.color?.toUpperCase());
+
 
     const fetchUserStatus = async () => {
         try {
@@ -244,57 +261,108 @@ const AllianceDashboard = ({ isOpen, onClose, onAllianceUpdate }) => {
                             <>
                                 <input type="text" placeholder="Name (e.g. The Void)" value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#222', color: 'white' }} />
                                 <input type="text" placeholder="Tag (e.g. VOID)" value={createForm.tag} onChange={e => setCreateForm({ ...createForm, tag: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#222', color: 'white' }} />
-                                <div style={{ display: 'flex', gap: '16px', marginTop: '10px', marginBottom: '10px' }}>
-                                    {/* Color Picker Section */}
+                                {/* Color Picker Section */}
+                                <div style={{
+                                    display: 'flex', flexDirection: 'column', gap: '8px',
+                                    padding: '12px', border: '1px solid #444', borderRadius: '12px'
+                                }}>
+                                    <span style={{ fontSize: '13px', fontWeight: '500', color: '#aaa' }}>Alliance Color</span>
                                     <div style={{
-                                        flex: 1, display: 'flex', flexDirection: 'column', gap: '8px',
-                                        padding: '12px', border: '1px solid #eee', borderRadius: '12px', alignItems: 'center'
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(10, 1fr)',
+                                        gap: '6px'
                                     }}>
-                                        <div style={{
-                                            width: '80px', height: '80px', borderRadius: '12px',
-                                            overflow: 'hidden', border: '2px solid #e0e0e0', cursor: 'pointer',
-                                            position: 'relative'
-                                        }}>
-                                            <input
-                                                type="color"
-                                                value={createForm.color}
-                                                onChange={e => setCreateForm({ ...createForm, color: e.target.value })}
-                                                style={{
-                                                    width: '150%', height: '150%', padding: 0, border: 'none',
-                                                    position: 'absolute', top: '-25%', left: '-25%', cursor: 'pointer'
-                                                }}
-                                            />
-                                        </div>
-                                        <span style={{ fontSize: '13px', fontWeight: '500', color: '#aaa' }}>Alliance Color</span>
-                                    </div>
-
-                                    {/* Logo Selection Section */}
-                                    <div style={{
-                                        flex: 1, display: 'flex', flexDirection: 'column', gap: '8px',
-                                        padding: '12px', border: '1px solid #eee', borderRadius: '12px', alignItems: 'center'
-                                    }}>
-                                        <div style={{
-                                            width: '80px', height: '80px', borderRadius: '12px',
-                                            backgroundColor: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            border: '2px solid #e0e0e0'
-                                        }}>
-                                            <img
-                                                src={getAvatarUrl(createForm.avatar, createForm.color)}
-                                                alt="Avatar Preview"
-                                                style={{ width: '64px', height: '64px', borderRadius: '8px' }}
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={() => setCreateForm({ ...createForm, avatar: Math.random().toString(36).substring(7) })}
-                                            style={{
-                                                padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
-                                                background: '#444', border: 'none', borderRadius: '20px', fontWeight: '600', color: 'white'
-                                            }}
-                                        >
-                                            🎲 Randomize
-                                        </button>
+                                        {COLOR_PALETTE.map((color) => {
+                                            const isTaken = takenColors.includes(color.toUpperCase());
+                                            const isSelected = createForm.color.toUpperCase() === color.toUpperCase();
+                                            return (
+                                                <div
+                                                    key={color}
+                                                    onClick={() => !isTaken && setCreateForm({ ...createForm, color })}
+                                                    style={{
+                                                        width: '100%',
+                                                        aspectRatio: '1',
+                                                        backgroundColor: color,
+                                                        borderRadius: '4px',
+                                                        cursor: isTaken ? 'not-allowed' : 'pointer',
+                                                        border: isSelected ? '2px solid white' : '1px solid rgba(255,255,255,0.1)',
+                                                        position: 'relative',
+                                                        opacity: isTaken ? 0.4 : 1,
+                                                        boxSizing: 'border-box'
+                                                    }}
+                                                    title={isTaken ? 'Color already taken' : color}
+                                                >
+                                                    {isTaken && (
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            top: 0,
+                                                            left: 0,
+                                                            right: 0,
+                                                            bottom: 0,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            color: 'white',
+                                                            fontSize: '12px',
+                                                            fontWeight: 'bold',
+                                                            textShadow: '0 0 2px black'
+                                                        }}>
+                                                            ✕
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
+
+                                {/* Logo Selection Section */}
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '12px',
+                                    padding: '12px', border: '1px solid #444', borderRadius: '12px'
+                                }}>
+                                    <div style={{
+                                        width: '56px', height: '56px', borderRadius: '8px',
+                                        backgroundColor: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        flexShrink: 0
+                                    }}>
+                                        <img
+                                            src={getAvatarUrl(createForm.avatar, createForm.color)}
+                                            alt="Avatar Preview"
+                                            style={{ width: '48px', height: '48px', borderRadius: '6px' }}
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: '500', color: '#aaa' }}>Alliance Logo</span>
+                                        <span style={{ fontSize: '11px', color: '#666' }}>Auto-generated from color</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setCreateForm({ ...createForm, avatar: Math.random().toString(36).substring(7) })}
+                                        style={{
+                                            padding: '8px 14px', fontSize: '12px', cursor: 'pointer',
+                                            background: '#444', border: 'none', borderRadius: '6px', fontWeight: '600', color: 'white'
+                                        }}
+                                    >
+                                        🎲 Randomize
+                                    </button>
+                                </div>
+
+                                {/* Warning Message */}
+                                <div style={{
+                                    padding: '10px 12px',
+                                    backgroundColor: 'rgba(255, 165, 0, 0.15)',
+                                    border: '1px solid rgba(255, 165, 0, 0.3)',
+                                    borderRadius: '8px',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '8px'
+                                }}>
+                                    <span style={{ fontSize: '14px' }}>⚠️</span>
+                                    <span style={{ fontSize: '12px', color: '#FFA500', lineHeight: '1.4' }}>
+                                        Once created, alliance name and appearance <strong>cannot be changed</strong>. Please double-check before confirming.
+                                    </span>
+                                </div>
+
                                 <button onClick={handleCreate} disabled={loading} style={{ padding: '10px', background: '#FF4500', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
                                     {loading ? 'Signing...' : 'Establish Alliance'}
                                 </button>

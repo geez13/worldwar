@@ -9,6 +9,36 @@ import { Alliance } from './models/Alliance.js';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 
+// Simple water detection based on coordinates
+// Returns true if the coordinate is likely over water (ocean/sea)
+// NOTE: Disabled for now - bounding box approach is too inaccurate and blocks land areas
+// TODO: Implement with proper GeoJSON land boundaries for accurate detection
+function isWaterCoordinate(lat, lng) {
+    // Temporarily disabled - allow painting everywhere
+    // The bounding box approach blocks legitimate land areas
+    return false;
+
+    /* Original implementation (disabled):
+    // Major ocean/sea regions (simplified bounding boxes)
+    const waterRegions = [
+        // Pacific Ocean (simplified boxes)
+        { minLat: -60, maxLat: 60, minLng: 100, maxLng: 180 },  // Western Pacific
+        { minLat: -60, maxLat: 60, minLng: -180, maxLng: -100 }, // Eastern Pacific
+        // ... more regions
+    ];
+
+    // Check if coordinate falls in any water region
+    for (const region of waterRegions) {
+        if (lat >= region.minLat && lat <= region.maxLat &&
+            lng >= region.minLng && lng <= region.maxLng) {
+            return true;
+        }
+    }
+
+    return false;
+    */
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -346,6 +376,19 @@ io.on('connection', (socket) => {
         // data: { key, color, walletAddress }
         let { key, color, walletAddress } = data;
         let allianceId = null;
+
+        // Parse coordinates from key
+        const [latIdx, lngIdx] = key.split(',').map(Number);
+        const GRID_STEP = 0.05; // Must match frontend
+        const lat = latIdx * GRID_STEP;
+        const lng = lngIdx * GRID_STEP;
+
+        // Check if on water - reject if so
+        if (isWaterCoordinate(lat, lng)) {
+            console.log(`Paint rejected - water at ${lat}, ${lng}`);
+            socket.emit('paint_error', { message: 'Cannot paint on water!' });
+            return;
+        }
 
         // 0. Enforce Alliance Color if user is in one
         if (walletAddress) {

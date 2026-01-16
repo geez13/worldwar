@@ -83,11 +83,17 @@ function GridOverlay({ selectedColor, socket }) {
             });
         });
 
+        socket.on('paint_error', ({ message }) => {
+            console.log('Paint error:', message);
+            // Could show a toast notification here instead of alert
+        });
+
         return () => {
             socket.off('connect');
             socket.off('init_state');
             socket.off('pixel_update');
             socket.off('pixel_erase');
+            socket.off('paint_error');
         };
     }, [socket]);
 
@@ -240,29 +246,46 @@ export default function WorldMap() {
             </MapContainer>
 
             {/* UI LAYER (Outside MapContext) */}
+            {/* Top Left Logo */}
+            <img
+                src="/Logo.svg"
+                alt="PIXELNATION Logo"
+                style={{
+                    position: 'absolute',
+                    top: 20,
+                    left: 20,
+                    height: '50px',
+                    width: 'auto',
+                    zIndex: 1000,
+                    pointerEvents: 'none',
+                    filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4))'
+                }}
+            />
             <div
                 style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000, display: 'flex', gap: '10px', alignItems: 'center' }}
             >
                 <button
                     onClick={() => setIsInfoOpen(true)}
                     style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        backgroundColor: 'rgba(0,0,0,0.8)',
-                        color: '#FFD700',
-                        border: '2px solid #FFD700',
-                        fontSize: '20px',
-                        fontWeight: 'bold',
+                        padding: '10px 16px',
+                        height: '44px',
+                        borderRadius: '8px',
+                        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                        color: 'white',
+                        border: '2px solid #555',
+                        fontSize: '15px',
+                        fontWeight: '600',
                         cursor: 'pointer',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                        gap: '6px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                     }}
                     title="How to Play"
                 >
-                    ℹ️
+                    ❓ How to Play
                 </button>
                 <button
                     onClick={() => setIsAllianceOpen(true)}

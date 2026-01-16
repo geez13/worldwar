@@ -27,3 +27,6 @@ const getApiUrl = () => {
 
 export const API_URL = getApiUrl();
 console.log("🔌 Socket URL configured to:", API_URL);
+
+// Buy $PXN Link - configurable via environment variable
+export const BUY_PXN_URL = import.meta.env.VITE_BUY_PXN_URL || 'https://pump.fun';
