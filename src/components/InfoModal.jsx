@@ -167,7 +167,7 @@ const InfoModal = ({ isOpen, onClose, hasToken = false, isCheckingToken = false,
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            zIndex: 100000
+            zIndex: 9000
         }}>
             <div
                 ref={modalRef}
