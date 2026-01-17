@@ -6,6 +6,11 @@ import { TOKEN_CA, SOLANA_RPC_URL } from '../config';
  * @returns {Promise<{hasToken: boolean, balance: number}>}
  */
 export async function checkTokenBalance(walletAddress) {
+    console.log('🔍 Checking token balance...');
+    console.log('   Wallet:', walletAddress);
+    console.log('   Token CA:', TOKEN_CA);
+    console.log('   RPC URL:', SOLANA_RPC_URL);
+
     try {
         // Get token accounts for the wallet
         const response = await fetch(SOLANA_RPC_URL, {
@@ -24,17 +29,25 @@ export async function checkTokenBalance(walletAddress) {
         });
 
         const data = await response.json();
+        console.log('📡 RPC Response:', data);
+
+        if (data.error) {
+            console.error('❌ RPC Error:', data.error);
+            return { hasToken: false, balance: 0 };
+        }
 
         if (data.result && data.result.value && data.result.value.length > 0) {
             // Get the token balance
             const tokenAccount = data.result.value[0];
             const balance = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount || 0;
+            console.log('✅ Token found! Balance:', balance);
             return { hasToken: balance > 0, balance };
         }
 
+        console.log('⚠️ No token accounts found for this wallet');
         return { hasToken: false, balance: 0 };
     } catch (error) {
-        console.error('Error checking token balance:', error);
+        console.error('❌ Error checking token balance:', error);
         return { hasToken: false, balance: 0 };
     }
 }

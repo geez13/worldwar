@@ -30,10 +30,11 @@ console.log("🔌 Socket URL configured to:", API_URL);
 
 // Token Contract Address - configurable via environment variable
 // Default is test token, replace with real $PXN CA in production
-export const TOKEN_CA = import.meta.env.VITE_TOKEN_CA || 'nljtfes9waraj5ahhmfkp5fpmravzebvteptxeypump';
+export const TOKEN_CA = import.meta.env.VITE_TOKEN_CA || 'NLjtFES9wAraj5aHhmfKp5FPmRavZEbVTEPTxEypump';
 
 // Buy $PXN Link - uses token CA for pump.fun
 export const BUY_PXN_URL = `https://pump.fun/coin/${TOKEN_CA}`;
 
 // Solana RPC URL for token balance checks
-export const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+// Uses Helius RPC with API key (set VITE_SOLANA_RPC_URL in production to override)
+export const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://mainnet.helius-rpc.com/?api-key=7ea926fc-5dee-45b0-9e6f-b691375ca81d';

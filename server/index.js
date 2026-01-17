@@ -9,6 +9,53 @@ import { Alliance } from './models/Alliance.js';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 
+// Token Gating Configuration
+const TOKEN_CA = process.env.TOKEN_CA || 'NLjtFES9wAraj5aHhmfKp5FPmRavZEbVTEPTxEypump';
+const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://mainnet.helius-rpc.com/?api-key=7ea926fc-5dee-45b0-9e6f-b691375ca81d';
+const MIN_TOKEN_BALANCE = parseFloat(process.env.MIN_TOKEN_BALANCE || '1');
+
+/**
+ * Verify that a wallet holds the required token balance (server-side)
+ * @param {string} walletAddress - Solana wallet public key
+ * @returns {Promise<{hasToken: boolean, balance: number}>}
+ */
+async function verifyTokenBalance(walletAddress) {
+    try {
+        const response = await fetch(SOLANA_RPC_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'getTokenAccountsByOwner',
+                params: [
+                    walletAddress,
+                    { mint: TOKEN_CA },
+                    { encoding: 'jsonParsed' }
+                ]
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            console.error('RPC Error verifying token:', data.error);
+            return { hasToken: false, balance: 0 };
+        }
+
+        if (data.result && data.result.value && data.result.value.length > 0) {
+            const tokenAccount = data.result.value[0];
+            const balance = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount || 0;
+            return { hasToken: balance >= MIN_TOKEN_BALANCE, balance };
+        }
+
+        return { hasToken: false, balance: 0 };
+    } catch (error) {
+        console.error('Error verifying token balance:', error);
+        return { hasToken: false, balance: 0 };
+    }
+}
+
 // Simple water detection based on coordinates
 // Returns true if the coordinate is likely over water (ocean/sea)
 // NOTE: Disabled for now - bounding box approach is too inaccurate and blocks land areas
@@ -74,6 +121,12 @@ app.post('/api/profile', async (req, res) => {
             return res.status(401).json({ error: 'Invalid signature' });
         }
 
+        // Verify token balance (server-side enforcement)
+        const { hasToken, balance } = await verifyTokenBalance(walletAddress);
+        if (!hasToken) {
+            return res.status(403).json({ error: `Insufficient $PXN tokens. You need at least ${MIN_TOKEN_BALANCE} tokens to create a profile. Current balance: ${balance}` });
+        }
+
         // Update User
         const user = await User.findOneAndUpdate(
             { walletAddress },
@@ -118,6 +171,12 @@ app.post('/api/alliance/create', async (req, res) => {
         const verified = nacl.sign.detached.verify(messageUint8, signatureUint8, publicKeyUint8);
 
         if (!verified) return res.status(401).json({ error: 'Invalid signature' });
+
+        // Verify token balance (server-side enforcement)
+        const { hasToken, balance } = await verifyTokenBalance(walletAddress);
+        if (!hasToken) {
+            return res.status(403).json({ error: `Insufficient $PXN tokens. You need at least ${MIN_TOKEN_BALANCE} tokens to create an alliance. Current balance: ${balance}` });
+        }
 
         // 2. Check if user already in alliance
         const user = await User.findOne({ walletAddress });
@@ -177,6 +236,12 @@ app.post('/api/alliance/join', async (req, res) => {
         const publicKeyUint8 = bs58.decode(walletAddress);
         const verified = nacl.sign.detached.verify(messageUint8, signatureUint8, publicKeyUint8);
         if (!verified) return res.status(401).json({ error: 'Invalid signature' });
+
+        // Verify token balance (server-side enforcement)
+        const { hasToken, balance } = await verifyTokenBalance(walletAddress);
+        if (!hasToken) {
+            return res.status(403).json({ error: `Insufficient $PXN tokens. You need at least ${MIN_TOKEN_BALANCE} tokens to join an alliance. Current balance: ${balance}` });
+        }
 
         // Find Alliance
         const alliance = await Alliance.findOne({ tag: allianceTag });
@@ -350,6 +415,18 @@ io.on('connection', (socket) => {
         // updates: Array of { key, color }
         console.log(`Received batch_paint of size ${updates.length} from ${walletAddress || 'anonymous'}`);
 
+        // Token verification - require wallet and valid token balance
+        if (!walletAddress) {
+            socket.emit('paint_error', { message: 'Connect your wallet to paint!' });
+            return;
+        }
+
+        const { hasToken } = await verifyTokenBalance(walletAddress);
+        if (!hasToken) {
+            socket.emit('paint_error', { message: 'You need $PXN tokens to paint!' });
+            return;
+        }
+
         updates.forEach(({ key, color }) => {
             // 1. Update Memory
             pixelMap.set(key, color);
@@ -376,6 +453,18 @@ io.on('connection', (socket) => {
         // data: { key, color, walletAddress }
         let { key, color, walletAddress } = data;
         let allianceId = null;
+
+        // Token verification - require wallet and valid token balance
+        if (!walletAddress) {
+            socket.emit('paint_error', { message: 'Connect your wallet to paint!' });
+            return;
+        }
+
+        const { hasToken } = await verifyTokenBalance(walletAddress);
+        if (!hasToken) {
+            socket.emit('paint_error', { message: 'You need $PXN tokens to paint!' });
+            return;
+        }
 
         // Parse coordinates from key
         const [latIdx, lngIdx] = key.split(',').map(Number);
@@ -430,6 +519,18 @@ io.on('connection', (socket) => {
 
     socket.on('erase_pixel', async (data) => {
         const { key, walletAddress } = data;
+
+        // Token verification - require wallet and valid token balance
+        if (!walletAddress) {
+            socket.emit('paint_error', { message: 'Connect your wallet to erase!' });
+            return;
+        }
+
+        const { hasToken } = await verifyTokenBalance(walletAddress);
+        if (!hasToken) {
+            socket.emit('paint_error', { message: 'You need $PXN tokens to erase!' });
+            return;
+        }
 
         // 1. Update Memory
         pixelMap.delete(key);
